@@ -1,0 +1,74 @@
+alias rpws /usr/bin/rpws
+
+#variable de ratpoison
+set wingravity c
+set border 0
+set barborder 5
+set bargravity s
+set barpadding 5 5
+set font Mono-12
+set bgcolor black
+set fgcolor orange4
+set winname name
+#set fwcolor red
+#set bwcolor blue
+
+alias fluxbox tmpwm fluxbox
+#alias stump tmpwm stumpwm
+
+# #initialisation de 2 fenetres
+ exec rpws init 2
+ bind ampersand exec rpws 1
+ bind eacute exec rpws 2
+
+#escape Super_L
+#escape Hyper 
+
+#definekey top Super_L readkey root
+#definekey root Super_L link less
+
+#unbinding
+unbind .
+unbind C-space
+unbind C-Return
+unbind Return
+unbind C-a
+unbind C-c
+unbind C-A
+unbind C-K
+unbind C-v
+unbind v
+unbind C-V
+unbind V
+unbind N
+unbind P
+
+bind C-space prev
+
+##PRGRAMMES BINDINGS
+
+bind C exec exec urxvtc
+bind c exec exec /home/antoine/.ratpoison/runraise.bash urxvt urxvtc
+bind e exec exec /home/antoine/.ratpoison/runraise.bash emacs "/usr/local/bin/emacsclient -c"
+bind E exec exec /usr/local/bin/emacs
+bind C-e exec exec urxvtc -e /usr/local/bin/emacs -nw -Q
+bind i exec exec /home/antoine/.ratpoison/runraise.bash irssi "urxvtc +sb -name irssi -e irssi"
+bind I exec exec urxvtc -e irssi
+bind b exec exec /home/antoine/.ratpoison/runraise.bash Navigator /usr/local/share/firefox/firefox-bin
+#bind B exec exec iceweasel
+bind B exec exec /usr/local/share/firefox/firefox-bin
+bind V exec exec chromium-browser
+#bind l exec exec /home/antoine/.ratpoison/evalemacs.bash "(switch-to-buffer \"*inferior-lisp*\")"
+
+bind m exec exec icedove
+bind g exec exec blender
+bind d exec exec gimp
+
+bind Z exec import rat_screen.png
+
+bind t exec /home/antoine/.ratpoison/temperatures.bash
+
+bind Left exec /home/antoine/.ratpoison/windmove.bash "left"
+bind Right exec /home/antoine/.ratpoison/windmove.bash "right"
+bind Up exec /home/antoine/.ratpoison/windmove.bash "up"
+bind Down exec /home/antoine/.ratpoison/windmove.bash "down"

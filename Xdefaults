@@ -1,0 +1,17 @@
+!unicode rxvt conf
+URxvt*background:       	#000000
+URxvt*foreground:       	#777777
+!URxvt*reverseVideo:		false
+!URxvt*tintColor:        	#dfdfdf
+!URxvt*font:			-*-terminus-medium-*-*-*-17-*-*-*-*-*-*-*
+URxvt*font:			xft:Bitstream Vera Sans mono:size=12
+!URxvt*font:			xft:Source Code Pro:size=10.3
+URxvt*scrollBar:		false
+URxvt*scrollstyle:		rxvt
+!URxvt*saveLines:		500
+!URxvt*termName:		URxvt
+URxvt*cursorColor:		#555555
+!URxvt*colorBD:		 	#FFA75D
+!URxvt*colorUL:			#E8AE5D	
+URxvt*termName:			rxvt-unicode
+

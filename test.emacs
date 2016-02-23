@@ -1,0 +1,1 @@
+emacs -c emacs/emacs -e "(setq user-emacs-directory \"emacs/emacs.d/\")"

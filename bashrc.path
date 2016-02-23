@@ -1,0 +1,11 @@
+# Modify the prompt
+
+PS1_HOSTNAME="";
+if [ "debian" != $HOSTNAME ]; then
+    PS1_HOSTNAME="\[\033[4;35m\]\H";
+fi
+PS1_USER="";
+if [ "antoine" != $USER ]; then
+    PS1_USER="\[\033[35m\]\u";
+fi
+export PS1="$PS1_USER$PS1_HOSTNAME\[\033[0;33;3m\]\w\[\033[0;0m\] "
