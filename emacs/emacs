@@ -3,6 +3,9 @@
 ;; problematic with C-x C-a binding
 (setq edebug-inhibit-emacs-lisp-mode-bindings 't)
 
+;; Remove the system bell or the visual bell.
+(setq ring-bell-function 'ignore)
+
 (defun ab-inverse-color ()
   (interactive)
   (set-foreground-color "black")
