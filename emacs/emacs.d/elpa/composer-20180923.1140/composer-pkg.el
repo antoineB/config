@@ -1,0 +1,2 @@
+;;; -*- no-byte-compile: t -*-
+(define-package "composer" "20180923.1140" "Interface to PHP Composer" '((emacs "24") (s "1.9.0") (f "0.17") (request "0.2.0") (seq "1.9") (php-runtime "0.1.0")) :commit "6c1578b2352c81cc9a22616a70db2a14b7d2b67f" :keywords '("tools" "php" "dependency" "manager") :authors '(("USAMI Kenta" . "tadsan@zonu.me")) :maintainer '("USAMI Kenta" . "tadsan@zonu.me") :url "https://github.com/zonuexe/composer.el")
