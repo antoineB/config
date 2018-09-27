@@ -1,21 +1,83 @@
 (setq user-emacs-directory "~/prj/config/emacs/emacs.d/")
 
-;; problematic with C-x C-a binding
-(setq edebug-inhibit-emacs-lisp-mode-bindings 't)
-
-;; Remove the system bell or the visual bell.
-(setq ring-bell-function 'ignore)
-
-(defun ab-inverse-color ()
-  (interactive)
-  (set-foreground-color "black")
-  (set-background-color "white"))
-
+
 (require 'package)
-(add-to-list 'package-archives
-  '("melpa" . "http://melpa.milkbox.net/packages/") t)
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+(package-initialize)
 
-(package-initialize) 
+
+(tool-bar-mode -1)
+(menu-bar-mode -1)
+(scroll-bar-mode -1)
+
+;; (toggle-menu-bar-mode-from-frame nil)
+;; (toggle-scroll-bar -1)
+;; (toggle-tool-bar-mode-from-frame -1)
+
+(setq
+ ;; problematic with C-x C-a binding
+ edebug-inhibit-emacs-lisp-mode-bindings 't
+ ;; Remove the system bell or the visual bell.
+ ring-bell-function 'ignore
+ ;; Speed up when long line
+ bidi-display-reordering nil)
+
+(put 'downcase-region 'disabled nil)
+(put 'upcase-region 'disabled nil)
+(put 'narrow-to-region 'disabled nil)
+(put 'narrow-to-page 'disabled nil)
+(put 'erase-buffer 'disabled nil)
+(fset 'yes-or-no-p 'y-or-n-p)
+
+(require 'auto-complete)
+(setq ac-delay 0.2)
+
+;; Configure your local sql connection.
+(require 'sql)
+;; (setq sql-connection-alist
+;;       '(("name"
+;;          (sql-user "secret") (sql-server "secret") (sql-database "secret") (sql-product 'postgres))))
+
+;; Configure your used tramp connections.
+(require 'helm-mode)
+(require 'helm-tramp)
+;; (setq helm-tramp-custom-connections '("secret"))
+
+
+;; Global mode setup
+(show-paren-mode)
+(setq show-paren-delay 0)
+
+(require 'which-key)
+(which-key-mode)
+
+(require 'projectile)
+(projectile-global-mode)
+
+;; Remove noise from minor mode in the mode line.
+(require 'dim)
+(require 'eldoc)
+(require 'yasnippet)
+(require 'autorevert)
+(require 'auto-complete)
+(dim-minor-name 'which-key-mode "")
+(dim-minor-name 'eldoc-mode "")
+(dim-minor-name 'yas-minor-mode "")
+(dim-minor-name 'subword-mode "")
+(dim-minor-name 'auto-revert-mode "")
+(dim-minor-name 'auto-complete-mode "")
+
+(auto-insert-mode)
+
+
+;; Personal functions
+
+(defun kill-blank ()
+  (interactive)
+  (let ((p (point)))
+    (re-search-forward "[^ \t\r\n]")
+    (backward-char)
+    (kill-region p (point))))
 
 (defun racket-start-geiser ()
   (interactive)
@@ -25,60 +87,283 @@
   (geiser-mode-switch-to-repl nil)
   (ac-geiser-setup))
 
+(defun uncapitalize-first (str)
+  (if (= (length str) 0)
+      ""
+    (format "%s%s"
+            (downcase (substring str 0 1))
+            (substring str 1))))
 
-;; global keybindings
-(global-unset-key (kbd "C-x o"))
-(global-unset-key (kbd "C-x C-z"))
-(global-unset-key (kbd "C-x k"))
+(defun capitalize-first (str)
+  (if (= (length str) 0)
+      ""
+    (format "%s%s"
+            (upcase (substring str 0 1))
+            (substring str 1))))
 
-(global-unset-key (kbd "<C-M-left>"))
-(global-unset-key (kbd "<C-M-right>"))
+(defun capitalize-first-region (start end)
+  (interactive "r")
+  (let ((str (capitalize-first (buffer-substring start end))))
+    (kill-region start end)
+    (insert str)))
 
-(global-set-key (kbd "<M-left>") 'backward-sexp)
-(global-set-key (kbd "<M-right>") 'forward-sexp)
-(global-set-key (kbd "<M-up>") 'backward-sentence)
-(global-set-key (kbd "<M-down>") 'forward-sentence)
-(global-set-key (kbd "C-x C-d") 'ido-dired)
+;; Debug a simple PHP script.
+;; Change the session key geben-php to any session key text you like
+(require 'geben)
+(defun php-debug ()
+  "Run current PHP script for debugging with geben"
+  (interactive)
+  (call-interactively 'geben)
+  (shell-command
+    (concat "XDEBUG_CONFIG='idekey=geben-php' php "
+            (buffer-file-name) " &")))
 
-(global-set-key (kbd "C-$") 'undo)
+(defun buffer-end-with-newlinep ()
+  (let* ((max (point-max))
+         (last (char-before max))
+         (pre-last (char-before (- max 1))))
+    (if (= last 10)
+        (if (not (or (= pre-last 32)
+                     (= pre-last 10)
+                     (= pre-last 13)
+                     (= pre-last 9)))
+            't
+          nil)
+      nil)))
 
-(global-set-key (kbd "M-DEL") 'kill-sexp)
-(global-set-key (kbd "<M-backspace>") 'backward-kill-sexp)
+(defun save-buffer-and-correct ()
+  (interactive)
+  ;;(query-replace-regexp "[[:blank:]]+$" "" nil (point-min) (point-max))
+  (whitespace-cleanup)
+  (if (not (buffer-end-with-newlinep))
+      (save-excursion
+        (goto-char (point-max))
+        (insert 10)))
+  (save-buffer))
+
+;; TODO: Better having two theme
+;; (defun ab-inverse-color ()
+;;   (interactive)
+;;   (set-foreground-color "black")
+;;   (set-background-color "white"))
+
+
+;; mode extension register
+
+(add-to-list 'auto-mode-alist '("\\.twig\\'" . web-mode))
+(add-to-list 'auto-mode-alist '("\\.js\\'" . js2-mode))
+(add-to-list 'auto-mode-alist '("\\Tpl.php\\'" . web-mode))
+
+
+
+;; mode specific config
+
+(setq ispell-program-name "aspell"
+      ispell-extra-args '("--sug-mode=ultra"
+                          "--lang=en_US"
+                          ;; "--run-together" "--run-together-limit=5" "--run-together-min=2"
+                          )
+      ispell-list-command "list")
+
 
 (add-hook 'dired-mode-hook
-	  (lambda ()
-	    (local-unset-key (kbd "C-o"))))
+          (lambda ()
+            (local-unset-key (kbd "C-o"))
+            (local-set-key (kbd "C-o") 'other-window)))
 
-(defun kill-this-buffer-please ()
-  (interactive)
-  (kill-buffer (current-buffer)))
+(add-hook 'grep-mode-hook
+          (lambda ()
+            (toggle-truncate-lines)
+            (hl-line-mode 't)
+            (local-unset-key (kbd "C-o"))
+            (local-set-key (kbd "C-o") 'other-window)))
 
-(global-set-key (kbd "C-x C-a") 'kill-this-buffer-please)
+(add-hook 'sql-interactive-mode-hook
+          (lambda ()
+            (toggle-truncate-lines nil)))
 
-(global-set-key (kbd "C-x C-z") 'switch-to-buffer)
-(global-set-key (kbd "C-o") #'(lambda () 
-				(interactive) 
-				(other-window 1)))
+(add-hook 'git-commit-mode-hook
+          (lambda ()
+            (ispell-change-dictionary "british")))
 
-;; double char
-(load-file (concat user-emacs-directory "extra/double-char.el"))
+(add-hook 'css-mode-hook
+          (lambda ()
+            (require 'auto-complete)
+            (auto-complete-mode 't)
+            (local-set-key (kbd "C-x C-s") 'save-buffer-and-correct)))
 
-(defdoublechar semi-colon ";" ".")
-(defdoublechar coma "," "?")
-(defdoublechar colon ":" "/")
-(defdoublechar great "<" ">")
-(defdoublechar arobase "à" "@")
-(defdoublechar mark "-" "!") ; more convenient on azerty for-lisp-stuff.
+(add-hook 'org-mode-hook
+          (lambda ()
+            (flyspell-mode)
+            (org-bullets-mode)
+            (setq fill-column 80)))
 
-;;(global-set-key (kbd ";") 'double-char---semi-colon)
-(global-set-key (kbd ",") 'double-char---coma)
-(global-set-key (kbd ":") 'double-char---colon)
-(global-set-key (kbd "<") 'double-char---great)
-(global-set-key (kbd "à") 'double-char---arobase)
-(global-set-key (kbd "!") 'double-char---mark)
+(add-hook 'nxml-mode-hook
+          (lambda ()
+            (flycheck-mode)
+            (setq indent-tabs-mode nil)))
 
-(ido-mode)
+(add-hook 'js2-mode-hook
+          (lambda ()
+            (local-set-key (kbd "C-x C-s") 'save-buffer-and-correct)
+            (setq indent-tabs-mode nil)))
 
+;; (add-hook 'emacs-lisp-mode-hook 'ac-emacs-lisp-mode-setup)
+(add-hook 'emacs-lisp-mode-hook
+          (lambda ()
+            (auto-complete-mode 't)
+            (eldoc-mode 't)))
+
+(add-hook 'racket-mode-hook
+          (lambda ()
+            (local-set-key (kbd "TAB") 'indent-for-tab-command)
+            (when (condition-case ex
+                      (require 'flycheck) ('error nil))
+              (flycheck-define-checker
+                  racket
+                "A racket syntax checker"
+                :command ("racket" "-qf" source-inplace)
+                :error-patterns
+                ((error
+                  line-start (file-name) ":" line ":" (one-or-more digit) ":" " " (message) line-end))
+                :modes
+                racket-mode)
+              (flycheck-mode)
+              (flycheck-select-checker 'racket))
+
+            (when (condition-case ex
+                      (require 'highlight-parentheses-mode) ('error nil))
+              (highlight-parentheses-mode))))
+
+;; TODO: Set the right autocomplete global rule
+;; auto complete configuration
+;; (setq-default ac-sources '(ac-source-abbrev ac-source-dictionary ac-source-words-in-same-mode-buffers))
+
+;; TODO: whitespace-cleanup or save-buffer-and-correct ?
+(add-hook 'before-save-hook
+          (lambda ()
+            (cond
+             ((equal major-mode 'racket-mode)
+              (whitespace-cleanup))
+             ((equal major-mode 'scheme-mode)
+              (whitespace-cleanup))
+             ((equal major-mode 'clojure-mode)
+              (whitespace-cleanup)))))
+
+(require 'web-mode)
+(defun web-mode-flyspell-verify ()
+  (let ((f (get-text-property (- (point) 1) 'face))
+        thing
+        rlt)
+    (cond
+     ((not (memq f '(web-mode-html-attr-value-face
+                     web-mode-html-tag-face
+                     web-mode-html-attr-name-face
+                     web-mode-constant-face
+                     web-mode-doctype-face
+                     web-mode-keyword-face
+                     web-mode-comment-face ;; focus on get html label right
+                     web-mode-function-name-face
+                     web-mode-variable-name-face
+                     web-mode-css-property-name-face
+                     web-mode-css-selector-face
+                     web-mode-css-color-face
+                     web-mode-type-face
+                     web-mode-block-control-face)
+                 ))
+      (setq rlt t))
+     ((memq f '(web-mode-html-attr-value-face))
+      (save-excursion
+        (search-backward-regexp "=['\"]" (line-beginning-position) t)
+        (backward-char)
+        (setq thing (thing-at-point 'symbol))
+        (setq rlt (string-match "^\\(value\\|class\\|ng[A-Za-z0-9-]*\\)$" thing))
+        rlt))
+     (t t))
+    rlt))
+
+(put 'web-mode 'flyspell-mode-predicate 'web-mode-flyspell-verify)
+
+(add-hook 'web-mode-hook
+          (lambda ()
+            (require 'auto-complete)
+            (auto-complete-mode 't)
+            (local-set-key (kbd "<C-M-left>") 'web-mode-element-beginning)
+            (local-set-key (kbd "<C-M-right>") 'web-mode-element-end)
+            ;;(local-set-key (kbd "C-x C-s") 'web-save-buffer)
+
+            ;; (add-hook 'web-mode-before-auto-complete-hooks
+            ;;           '(lambda ()
+            ;;              (let ((web-mode-cur-language
+            ;;                     (web-mode-language-at-pos)))
+            ;;                (if (string= web-mode-cur-language "css")
+            ;;                    (setq emmet-use-css-transform t)
+            ;;                  (setq emmet-use-css-transform nil))
+            ;;                )))
+
+            ;; (setq web-mode-ac-sources-alist
+            ;;       '(("php" . (ac-source-yasnippet ac-source-php-auto-yasnippets))
+            ;;         ("html" . (ac-source-emmet-html-aliases ac-source-emmet-html-snippets))
+            ;;         ;; DEBUG It would be nice to have an ac-source for CSS property names
+            ;;         ;; as well as values. Since auto-complete already has the alist
+            ;;         ;; mapping property names to legal values, I should add one that uses
+            ;;         ;; the keys and issue a merge request.
+            ;;         ("css" . (ac-source-css-property
+            ;;                   ac-source-css-property-names
+            ;;                   ac-source-emmet-css-snippets))))
+            (toggle-truncate-lines t)))
+
+(require 'php-mode)
+;; (setq lsp-php-language-server-command '("php" "/home/antoinebrand/src/php-language-server/bin/php-language-server.php"))
+
+(c-add-style
+  "psr2"
+  '("php"
+    (c-offsets-alist . ((statement-cont . php-lineup-hanging-semicolon)))))
+
+(load-file (concat user-emacs-directory "php-extra.el"))
+(add-hook 'php-mode-hook
+          (lambda ()
+            (local-set-key [f5] 'php-debug)
+
+            (c-set-style "psr2")
+            (setq c-electric-flag nil) ;; electric is broken
+
+            ;; (setq which-func-modes '("php"))
+            ;; (which-func-try-to-enable)
+
+            (capitalized-words-mode)
+            (setq whitespace-line-column 120)
+
+            (require 'auto-complete)
+            (auto-complete-mode 't)
+
+            (require 'ac-php)
+            (when (not (tramp-tramp-file-p (buffer-name)))
+              (when (not (member 'ac-source-php ac-sources))
+                (setq ac-sources (append ac-sources '(ac-source-php))))
+              (yas-minor-mode)
+              (ac-php-core-eldoc-setup)
+              (define-key php-mode-map  (kbd "M-.") 'ac-php-find-symbol-at-point)   ;goto define
+              (define-key php-mode-map  (kbd "C-M-.") 'ac-php-location-stack-back)    ;go back
+              )
+
+            (flycheck-mode 't)
+            (abbrev-mode -1)
+            (setq comment-end "")
+            (local-set-key (kbd "SPC") 'php-magic-space)
+            (local-set-key (kbd "=") 'php-magic-equal)
+            (local-set-key (kbd "&") 'php-magic-ampersand)
+            (local-set-key (kbd "|") 'php-magic-pipe)
+            (local-set-key (kbd "?") 'php-magic-question)
+            (local-set-key (kbd ":") 'php-magic-ddot)
+            (local-set-key (kbd ".") 'php-magic-dot)
+            (local-set-key (kbd "(") 'php-magic-paren)
+            (local-set-key (kbd "C-x C-s") 'php-save-buffer-and-correct-reload)
+            (setq comment-start "// ")
+            (setq fill-column 120)))
+
+;; (load-file (concat user-emacs-directory "xliff.el"))
 
 ;; (require 'ac-slime)
 ;; (add-hook 'slime-mode-hook 'set-up-slime-ac)
@@ -86,120 +371,103 @@
 ;; (eval-after-load "auto-complete"
 ;;   '(add-to-list 'ac-modes 'slime-repl-mode))
 
+
+;; Global keybindings
 
-;; ratpoison same move windows
-(require 'windmove)
+(global-unset-key (kbd "<C-M-right>"))
+(global-unset-key (kbd "<C-M-left>"))
+(global-unset-key (kbd "<insert>"))
 
-(defun go-window-left ()
-  (interactive)
-  (if (windmove-find-other-window 'left)
-      (windmove-left)
-    (call-process "bash" nil 0 nil "-c" "ratpoison -c \"focusleft\"")))
+(require 'magit)
+(global-unset-key (kbd "<f1>"))
+(global-set-key (kbd "<f1>") 'magit-status)
+(global-unset-key (kbd "C-x d"))
+(global-unset-key (kbd "C-x b"))
+
+(require 'helm)
+(require 'helm-projectile)
+(require 'helm-swoop)
+(global-set-key (kbd "C-<f1>") 'helm-swoop)
+(global-set-key (kbd "C-<f2>") 'helm-ls-git-ls)
+(global-set-key (kbd "C-<f3>") 'helm-projectile-switch-project)
+(global-set-key (kbd "C-<f4>") 'helm-projectile-find-file-in-known-projects)
+
+(global-set-key (kbd "C-x C-f") 'helm-find-files)
 
 
-(defun go-window-right ()
-  (interactive)
-  (if (windmove-find-other-window 'right)
-      (windmove-right)
-    (call-process "bash" nil 0 nil "-c" "ratpoison -c \"focusright\"")))
+(global-set-key (kbd "M-z") 'kill-blank)
+(global-set-key (kbd "C-$") 'undo)
 
 
-(defun go-window-down ()
-  (interactive)
-  (if (windmove-find-other-window 'down)
-      (windmove-down)
-    (call-process "bash" nil 0 nil "-c" "ratpoison -c \"focusdown\"")))
+(global-unset-key (kbd "C-x o"))
+(global-unset-key (kbd "C-x C-z"))
+(global-unset-key (kbd "C-x k"))
+(global-set-key (kbd "C-x C-a") 'kill-this-buffer)
+(global-set-key (kbd "C-x C-z") 'helm-buffers-list)
+(global-set-key (kbd "C-o") 'other-window)
 
-(defun go-window-up ()
-  (interactive)
-  (if (windmove-find-other-window 'up)
-      (windmove-up)
-    (call-process "bash" nil 0 nil "-c" "ratpoison -c \"focusup\"")))
 
-(add-hook 'js2-mode-hook
-	  (lambda ()
-	    (require 'auto-complete)
-	    (auto-complete-mode t)
-	    (local-set-key (kbd "C-c C-c") 'comment-or-uncomment-region)))
+(global-unset-key (kbd "<C-M-left>"))
+(global-unset-key (kbd "<C-M-right>"))
 
-(fset 'yes-or-no-p 'y-or-n-p)
 
-;; (resize-mini-window-internal nil)
-;; (resize-temp-buffer-window)
+(global-set-key (kbd "<M-left>") 'backward-sexp)
+(global-set-key (kbd "<M-right>") 'forward-sexp)
+(global-set-key (kbd "<M-up>") 'backward-sentence)
+(global-set-key (kbd "<M-down>") 'forward-sentence)
+(global-set-key (kbd "<C-M-left>") 'forward-sentence)
+(global-set-key (kbd "<C-M-right>") 'forward-sentence)
+(global-set-key (kbd "M-DEL") 'kill-sexp)
+(global-set-key (kbd "<M-backspace>") 'backward-kill-sexp)
+(global-set-key (kbd "<C-M-backspace>") 'backward-kill-sentence)
+(global-set-key (kbd "<M-S-backspace>") 'backward-kill-paragraph)
 
-(put 'downcase-region 'disabled nil)
-(put 'upcase-region 'disabled nil)
-(put 'narrow-to-region 'disabled nil)
-(tool-bar-mode -1)
-(menu-bar-mode -1)
-(scroll-bar-mode -1)
-(show-paren-mode)
-(setq show-paren-delay 0)
-;; (set-face-foreground 'default "grey65")
-;; (set-face-background 'default "black")
 
-;; (set-face-foreground 'mode-line "black")
-;; (set-face-background 'mode-line "grey40")
+;; TODO: doesn't work
+;; (defun ab-projectile-mode-line ()
+;;   "Report project name and type in the modeline."
+;;   (if (file-remote-p default-directory)
+;;       " ∅™"
+;;     (format " %s™"
+;;             (projectile-project-name))))
+;; (setq projectile-mode-line-fn 'ab-projectile-mode-line)
 
-;; (set-face-foreground 'fringe "grey40")
-
-;; (global-set-key (kbd "S-<right>") 'previous-buffer)
-;; (global-set-key (kbd "S-<left>") 'next-buffer)
-
-(add-hook 'emacs-lisp-mode-hook
-	  (lambda ()
-	    (auto-complete-mode 't)
-	    (eldoc-mode 't)))
-
-(add-hook 'org-mode-hook
-	  (lambda ()
-	    (org-bullets-mode)))
-
-(add-hook 'before-save-hook
-          (lambda ()
-            (cond  
-             ((equal major-mode 'racket-mode)
-              (whitespace-cleanup))
-             ((equal major-mode 'scheme-mode)
-              (whitespace-cleanup))
-             ((equal major-mode 'clojure-mode)
-              (whitespace-cleanup)))))
-              
-;; (flycheck-define-checker racket
-;;   "A Racket syntax checker using the Racket compiler.
-;;    See URL `http://racket-lang.org/'."
-;;   :command ("racket" "-f" source)
-;;   :error-patterns
-;;   ((error line-start (file-name) ":" line ":" column ":" (message) line-end))
-;;   :modes racket-mode)
-
-(add-hook 'racket-mode-hook
-	  (lambda ()
-	    (local-set-key (kbd "C-c C-c") 'comment-or-uncomment-region)
-            (local-set-key (kbd "TAB") 'indent-for-tab-command)
-	    (when (condition-case ex
-	    	      (require 'flycheck) ('error nil))
-	      (flycheck-define-checker 
-	       racket
-	       "A racket syntax checker"
-	       :command ("racket" "-qf" source-inplace)
-	       :error-patterns
-	       ((error
-	    	 line-start (file-name) ":" line ":" (one-or-more digit) ":" " " (message) line-end))
-	       :modes
-	       racket-mode)
-	      (flycheck-mode)
-	      (flycheck-select-checker 'racket))
-
-	    (when (condition-case ex
-		      (require 'highlight-parentheses-mode) ('error nil))
-	      (highlight-parentheses-mode))))
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(whitespace-display-mappings
+   (quote
+    ((space-mark 32
+                 [183]
+                 [46])
+     (space-mark 160
+                 [164]
+                 [95])
+     (newline-mark 10
+                   [8718 10])
+     (tab-mark 9
+               [187 9]
+               [92 9]))))
+ '(global-visual-line-mode nil)
+ '(web-mode-code-indent-offset 4)
+ '(web-mode-css-indent-offset 4)
+ '(web-mode-disable-auto-pairing nil)
+ '(web-mode-enable-auto-closing t)
+ '(web-mode-enable-current-element-highlight t)
+ '(web-mode-markup-indent-offset 4)
+ '(php-mode-coding-style (quote psr2))
+ '(php-template-compatibility nil)
+ '(projectile-switch-project-action (quote helm-ls-git-ls))
+ '(grep-find-command "find . -type f -print0 | xargs -0 -P 4 -e grep -nH -e ")
+ '(ediff-merge-split-window-function (quote split-window-vertically))
+ '(helm-buffer-max-length 30)
+ '(helm-buffers-column-separator "│")
+ '(helm-buffers-end-truncated-string "…")
+ '(helm-projectile-fuzzy-match nil)
+ '(hl-sexp-background-color "#1c1f26")
  '(ac-auto-start 1)
  '(ac-delay 0.05)
  '(ac-ignore-case nil)
@@ -214,50 +482,27 @@
  '(browse-url-firefox-program "firefox")
  '(browse-url-generic-program "firefox")
  '(buffers-menu-show-status t)
- '(case-fold-search nil)
+ '(case-fold-search t)
  '(compilation-read-command nil)
  '(compilation-window-height 20)
  '(custom-safe-themes
    (quote
     ("c87cc60d01cf755375759d165c1d60d9586c6a31f0b5437a0378c2a93cfc8407" "ea2d7a22c104d833046b3077847d92b36488580b7035bf4e475c9fa0b518441c" "ce79400f46bd76bebeba655465f9eadf60c477bd671cbcd091fe871d58002a88" "f5e9f66da69f504cb61aacedeb8284d8f38f2e6f835fd658cac5f0ad5d924549" default)))
+ '(elpy-rpc-python-command "python3")
  '(ensime-outline-scala-file t)
  '(ensime-sbt-program-name "sbt")
  '(erc-header-line-format nil)
  '(erc-hide-list (quote ("JOIN" "PART" "QUIT")))
  '(erc-nick "antoineB")
- '(erc-nickserv-alist
-   (quote
-    ((Ars nil nil "Census" "IDENTIFY" nil nil nil)
-     (Austnet "NickOP!service@austnet.org" "/msg\\s-NickOP@austnet.org\\s-identify\\s-<password>" "nickop@austnet.org" "identify" nil nil nil)
-     (Azzurra "NickServ!service@azzurra.org" "/ns\\s-IDENTIFY\\s-password" "NickServ" "IDENTIFY" nil nil nil)
-     (BitlBee nil nil "&bitlbee" "identify" nil nil nil)
-     (BRASnet "NickServ!services@brasnet.org" "/NickServ\\s-IDENTIFY\\s-senha" "NickServ" "IDENTIFY" nil "" nil)
-     (DALnet "NickServ!service@dal.net" "/msg\\s-NickServ@services.dal.net\\s-IDENTIFY\\s-<password>" "NickServ@services.dal.net" "IDENTIFY" nil nil nil)
-     (freenode "NickServ!NickServ@services." "This\\s-nickname\\s-is\\s-registered.\\s-Please\\s-choose" "NickServ" "IDENTIFY" t nil "You\\s-are\\s-now\\s-identified\\s-for\\s-")
-     (GalaxyNet "NS!nickserv@galaxynet.org" "Please\\s-change\\s-nicks\\s-or\\s-authenticate." "NS@services.galaxynet.org" "AUTH" t nil nil)
-     (GRnet "NickServ!service@irc.gr" "This\\s-nickname\\s-is\\s-registered\\s-and\\s-protected." "NickServ" "IDENTIFY" nil nil "Password\\s-accepted\\s--\\s-you\\s-are\\s-now\\s-recognized.")
-     (iip "Trent@anon.iip" "type\\s-/squery\\s-Trent\\s-identify\\s-<password>" "Trent@anon.iip" "IDENTIFY" nil "SQUERY" nil)
-     (OFTC "NickServ!services@services.oftc.net" nil "NickServ" "IDENTIFY" nil nil "You\\s-are\\s-successfully\\s-identified\\s-as\\s-")
-     (Rizon "NickServ!service@rizon.net" "This\\s-nickname\\s-is\\s-registered\\s-and\\s-protected." "NickServ" "IDENTIFY" nil nil "Password\\s-accepted\\s--\\s-you\\s-are\\s-now\\s-recognized.")
-     (QuakeNet nil nil "Q@CServe.quakenet.org" "auth" t nil nil)
-     (SlashNET "NickServ!services@services.slashnet.org" "/msg\\s-NickServ\\s-IDENTIFY\\s-password" "NickServ@services.slashnet.org" "IDENTIFY" nil nil nil))))
- '(erc-nickserv-passwords (quote ((freenode (("antoineB" . "DKgLmYJV"))))))
  '(fill-column 80)
- '(flymake-allowed-file-name-masks
+ '(flycheck-mode-line-prefix "✓")
+ '(flycheck-php-phpcs-executable "/home/antoine/.config/composer/vendor/bin/phpcs")
+ '(flycheck-phpcs-standard "PSR2")
+ '(flycheck-php-phpmd-executable "phpmd")
+ '(flycheck-phpmd-rulesets (quote ("unusedcode")))
+ '(eshell-visual-commands
    (quote
-    (("\\.\\(?:c\\(?:pp\\|xx\\|\\+\\+\\)?\\|CC\\)\\'" flymake-simple-make-init)
-     ("\\.xml\\'" flymake-xml-init)
-     ("\\.html?\\'" flymake-xml-init)
-     ("\\.cs\\'" flymake-simple-make-init)
-     ("\\.p[ml]\\'" flymake-perl-init)
-     ("\\.php[345]?\\'" flymake-php-init)
-     ("\\.h\\|\\.hpp\\'" flymake-master-make-header-init flymake-master-cleanup)
-     ("\\.java\\'" flymake-simple-make-java-init flymake-simple-java-cleanup)
-     ("[0-9]+\\.tex\\'" flymake-master-tex-init flymake-master-cleanup)
-     ("\\.tex\\'" flymake-simple-tex-init)
-     ("\\.scala\\'" flymake-simple-make-init)
-     ("\\.idl\\'" flymake-simple-make-init))))
- '(flymake-log-level -1)
+    ("vi" "screen" "top" "less" "more" "lynx" "ncftp" "pine" "tin" "trn" "elm" "htop")))
  '(font-lock-maximum-decoration t)
  '(fringe-mode (quote (0)) nil (fringe))
  '(geiser-guile-debug-show-bt-p t)
@@ -266,6 +511,7 @@
  '(geiser-mode-auto-p nil)
  '(geiser-mode-company-p nil)
  '(geiser-racket-binary "racket")
+ '(racket-pretty-lambda t)
  '(geiser-racket-collects (quote ("/home/antoine/Downloads/racket-5.3.3/collects")))
  '(geiser-racket-extra-keywords
    (quote
@@ -274,15 +520,22 @@
  '(hl-paren-background-colors nil)
  '(hl-sexp-background-colors (quote ("grey15" "grey10" "gray5")))
  '(hl-sexp-colors nil)
+ '(langtool-bin
+   /home/antoinebrand/LanguageTool-4\.2/languagetool-commandline\.jar)
  '(indent-tabs-mode nil)
  '(indicate-empty-lines t)
- '(inferior-lisp-program "sbcl")
+ '(inferior-lisp-program "sbcl" t)
  '(inhibit-local-menu-bar-menus nil)
  '(inhibit-startup-screen t)
  '(js2-auto-indent-p t)
  '(js2-mirror-mode t)
  '(linum-format " %7i ")
+ '(lsp-hover-text-function (quote lsp--text-document-hover-string))
+ '(lsp-inhibit-message t)
  '(nxhtml-default-encoding (quote utf-8))
+ '(nxml-child-indent 4)
+ '(nxml-outline-child-indent 4)
+ '(nxml-slash-auto-complete-flag t)
  '(nxml-heading-element-name-regexp "Window\\|Property")
  '(nxml-section-element-name-regexp "div\\|Window")
  '(org-bullets-bullet-list (quote ("○" "○" "○" "○")))
@@ -291,6 +544,15 @@
     (:foreground default :background default :scale 1.5 :html-foreground "Black" :html-background "Transparent" :html-scale 1.0 :matchers
                  ("begin" "$1" "$" "$$" "\\(" "\\["))))
  '(overflow-newline-into-fringe nil)
+ '(magit-display-buffer-function (quote magit-display-buffer-same-window-except-diff-v1))
+ '(magit-popup-manpage-package (quote woman))
+ '(magit-refs-sections-hook
+   (quote
+    (magit-insert-error-header magit-insert-branch-description magit-insert-local-branches magit-insert-remote-branches)))
+ '(package-selected-packages
+   (quote
+    (ibuffer-git ibuffer-projectile ibuffer-tramp geben geben-helm-projectile helm-css-scss helm-hunks helm-sql-connect helm-system-packages helm-unicode auto-highlight-symbol company-php composer csv-mode dim elf-mode elfeed erlang json-mode langtool neon-mode nginx-mode org-preview-html prog-fill redis restclient restclient-helm sql-indent strace-mode treemacs treemacs-projectile vlf wgrep-helm yaml-mode company-lsp lsp-php lsp-rust cargo js3-mode cquery lsp-java lsp-javascript-typescript lsp-ui go-mode lsp-go ac-php ac-php-core which-key play-routes-mode docker docker-api docker-tramp dockerfile-mode elpy helm-tramp py-autopep8 bison-mode wgrep helm-projectile projectile magit web-mode w3m twilight-anti-bright-theme toml-mode toml textile-mode sokoban smeargle rustfmt rainbow-delimiters rainbow-blocks racket-mode quack python-mode pretty-symbols php-mode pcomplete-extension org-bullets org-ac moz markdown-mode+ lua-mode lex kite jss jazz-theme jabber idomenu ido-vertical-mode ido-at-point htmlize highlight-parentheses highlight-indentation highlight-blocks helm-swoop helm-ls-git helm-git-grep helm-git-files helm-git helm-flycheck gh fold-this flymake-python-pyflakes flycheck-rust flycheck-ocaml flycheck-haskell flx-ido flex-isearch f ensime display-theme camcorder bash-completion auto-complete-nxml adjust-parens ac-slime ac-racer ac-nrepl ac-js2 ac-ispell ac-helm ac-geiser ac-etags ac-dabbrev)))
+ '(python-shell-interpreter "python3")
  '(quack-default-program "~/Downloads/racket-5.3.3/bin/racket")
  '(quack-pretty-lambda-p t)
  '(quack-programs
@@ -332,13 +594,6 @@
  '(speedbar-supported-extension-expressions
    (quote
     (".org" ".wy" ".by" ".[ch]\\(\\+\\+\\|pp\\|c\\|h\\|xx\\)?" ".tex\\(i\\(nfo\\)?\\)?" ".el" ".emacs" ".l" ".lsp" ".p" ".java" ".f\\(90\\|77\\|or\\)?" ".ada" ".p[lm]" ".tcl" ".m" ".scm" ".pm" ".py" ".g" ".s?html" ".ma?k" "[Mm]akefile\\(\\.in\\)?" ".php" ".layout" ".yml" ".sql" ".css" ".js" ".scala" ".cljs?")))
- '(speedbar-tag-hierarchy-method nil)
- '(speedbar-use-images t)
- '(sql-postgres-login-params
-   (quote
-    ((user :default "antoine")
-     (database :default "job_board")
-     (server :default "localhost"))))
  '(sql-postgres-options (quote ("-P" "pager=off" "--port=5432")))
  '(yaml-indent-offset 4)
  '(yas/trigger-key "<end>"))
@@ -349,18 +604,18 @@
  ;; If there is more than one, they won't work right.
  '(default ((t (:inherit nil :stipple nil :background "black" :foreground "grey50" :inverse-video nil :box nil :strike-through nil :overline nil :underline nil :slant normal :weight normal :height 135 :width normal :foundry "adobe" :family "Source Code Pro"))))
  '(cursor ((t (:background "grey40"))))
- '(diff-added ((t (:inherit diff-changed :foreground "green3"))) t)
- '(diff-changed ((nil nil)) t)
- '(diff-file-header ((((class color) (min-colors 88) (background dark)) (:underline "yellow" :weight bold))) t)
- '(diff-header ((((class color) (min-colors 88) (background dark)) (:height 1.15))) t)
- '(diff-hunk-header ((t (:foreground "purple3"))) t)
- '(diff-index ((t nil)) t)
- '(diff-indicator-removed ((t (:inherit diff-removed))) t)
- '(diff-nonexistent ((t nil)) t)
- '(diff-refine-added ((t (:inherit diff-added-face :underline t))) t)
+ '(diff-added ((t (:inherit diff-changed :foreground "green3"))))
+ '(diff-changed ((nil nil)))
+ '(diff-file-header ((((class color) (min-colors 88) (background dark)) (:underline "yellow" :weight bold))))
+ '(diff-header ((((class color) (min-colors 88) (background dark)) (:height 1.15))))
+ '(diff-hunk-header ((t (:foreground "purple3"))))
+ '(diff-index ((t nil)))
+ '(diff-indicator-removed ((t (:inherit diff-removed))))
+ '(diff-nonexistent ((t nil)))
+ '(diff-refine-added ((t (:inherit diff-added-face :underline t))))
  '(diff-refine-change ((((class color) (min-colors 88) (background dark)) nil)) t)
- '(diff-refine-removed ((t (:inherit diff-removed-face :underline t))) t)
- '(diff-removed ((t (:inherit diff-changed :foreground "red3"))) t)
+ '(diff-refine-removed ((t (:inherit diff-removed-face :underline t))))
+ '(diff-removed ((t (:inherit diff-changed :foreground "red3"))))
  '(flymake-errline ((((class color) (background dark)) (:underline "Firebrick4"))))
  '(flymake-warnline ((((class color) (background dark)) (:underline "yellow"))))
  '(font-lock-builtin-face ((t (:weight bold))))
@@ -382,8 +637,7 @@
  '(rainbow-delimiters-depth-1-face ((((background light)) (:foreground "red"))) t)
  '(rainbow-delimiters-depth-9-face ((t (:foreground "dark red"))) t)
  '(rainbow-delimiters-unmatched-face ((((background light)) (:foreground "gold"))) t)
- '(semantic-tag-boundary-face ((((class color) (background dark)) (:overline "orange4"))) t)
+ '(semantic-tag-boundary-face ((((class color) (background dark)) (:overline "orange4"))))
  '(vertical-border ((nil (:background "black" :foreground "black"))))
  '(widget-field ((t (:background "sky blue")))))
-(put 'narrow-to-page 'disabled nil)
 
